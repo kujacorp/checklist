@@ -1,12 +1,20 @@
 services:
-  web:
+  backend:
     build: ./backend
     ports:
-      - "8000:8080"
+      - "8080:8080"
     depends_on:
       - postgres
     environment:
       DATABASE_URL: "postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
   postgres:
     image: "postgres:alpine"
     environment:
@@ -15,6 +23,7 @@ services:
       POSTGRES_DB: postgres
     volumes:
       - db_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+
 volumes:
   db_data:

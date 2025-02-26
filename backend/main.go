@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -29,11 +30,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 	count++
 	_, _ = db.Exec("INSERT INTO visits DEFAULT VALUES")
-  if count == 1 {
-    fmt.Fprintf(w, "Hello World! I have been seen %d time.\n", count)
-  } else {
-    fmt.Fprintf(w, "Hello World! I have been seen %d times.\n", count)
-  }
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	json.NewEncoder(w).Encode(map[string]int{"count": count})
 }
 
 func main() {
