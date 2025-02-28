@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Panel</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>User Management</h1>
+    {{if .Message}}<p class="{{.MessageType}}">{{.Message}}</p>{{end}}
+
+    <h2>Create New User</h2>
+    <form method="POST" action="/admin/users">
+        <div class="form-group">
+            <label>Username: <input type="text" name="username" required></label>
+        </div>
+        <div class="form-group">
+            <label>Password: <input type="password" name="password" required></label>
+        </div>
+        <button type="submit">Create User</button>
+    </form>
+
+    <h2>Current Users</h2>
+    <table>
+        <tr>
+            <th>Username</th>
+            <th>Created At</th>
+            <th>Action</th>
+        </tr>
+        {{range .Users}}
+        <tr>
+            <td>{{.Username}}</td>
+            <td>{{.CreatedAt}}</td>
+            <td>
+                <form method="POST" action="/admin/users/delete" style="display: inline;">
+                    <input type="hidden" name="username" value="{{.Username}}">
+                    <button type="submit" onclick="return confirm('Are you sure?')">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {{end}}
+    </table>
+</body>
+</html>
