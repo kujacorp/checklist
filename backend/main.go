@@ -17,8 +17,17 @@ var db *sql.DB
 var tmpl *template.Template
 
 type User struct {
-	Username  string
-	CreatedAt time.Time
+	Username  string    `json:"username"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type LoginResponse struct {
+	User User `json:"user"`
 }
 
 func init() {
@@ -30,6 +39,43 @@ func init() {
 	}
 
 	tmpl = template.Must(template.ParseFiles("templates/admin.html"))
+}
+
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	var storedHash string
+	var user User
+	err := db.QueryRow(
+		"SELECT password_hash, username, created_at FROM users WHERE username = $1",
+		req.Username,
+	).Scan(&storedHash, &user.Username, &user.CreatedAt)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+			return
+		}
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(req.Password)); err != nil {
+		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(LoginResponse{User: user})
 }
 
 func viewCountHandler(w http.ResponseWriter, r *http.Request) {
@@ -156,6 +202,7 @@ func deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	http.HandleFunc("/", viewCountHandler)
+	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/admin", basicAuth(adminHandler))
 	http.HandleFunc("/admin/users", basicAuth(createUserHandler))
 	http.HandleFunc("/admin/users/delete", basicAuth(deleteUserHandler))
