@@ -1,4 +1,4 @@
-module checklist
+module github.com/kujacorp/checklist
 
 go 1.24.0
 
