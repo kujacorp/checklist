@@ -12,6 +12,9 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/kujacorp/checklist/admin"
+	"github.com/kujacorp/checklist/api"
+	"github.com/kujacorp/checklist/auth"
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -41,8 +44,8 @@ type LoginResponse struct {
 }
 
 type SignupRequest struct {
-    Username string `json:"username"`
-    Password string `json:"password"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 func init() {
@@ -133,68 +136,68 @@ func verifyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func signupHandler(w http.ResponseWriter, r *http.Request) {
-    if r.Method != http.MethodPost {
-        log.Printf("Invalid method: %s", r.Method)
-        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-        return
-    }
+	if r.Method != http.MethodPost {
+		log.Printf("Invalid method: %s", r.Method)
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
-    var req SignupRequest
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        log.Printf("Invalid request body: %v", err)
-        http.Error(w, "Invalid request body", http.StatusBadRequest)
-        return
-    }
+	var req SignupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Invalid request body: %v", err)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-    // Log the signup attempt
-    log.Printf("Signup attempt for username: %s", req.Username)
+	// Log the signup attempt
+	log.Printf("Signup attempt for username: %s", req.Username)
 
-    var exists bool
-    err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)", req.Username).Scan(&exists)
-    if err != nil {
-        log.Printf("Database error checking existence: %v", err)
-        http.Error(w, "Database error", http.StatusInternalServerError)
-        return
-    }
-    if exists {
-        log.Printf("Username %s already exists", req.Username)
-        http.Error(w, "Username already taken", http.StatusConflict)
-        return
-    }
+	var exists bool
+	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)", req.Username).Scan(&exists)
+	if err != nil {
+		log.Printf("Database error checking existence: %v", err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if exists {
+		log.Printf("Username %s already exists", req.Username)
+		http.Error(w, "Username already taken", http.StatusConflict)
+		return
+	}
 
-    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-    if err != nil {
-        log.Printf("Error hashing password: %v", err)
-        http.Error(w, "Error processing password", http.StatusInternalServerError)
-        return
-    }
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Printf("Error hashing password: %v", err)
+		http.Error(w, "Error processing password", http.StatusInternalServerError)
+		return
+	}
 
-    var user User
-    err = db.QueryRow(
-        "INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING username, created_at",
-        req.Username, string(hashedPassword),
-    ).Scan(&user.Username, &user.CreatedAt)
-    if err != nil {
-        log.Printf("Error creating user: %v", err)
-        http.Error(w, "Error creating user", http.StatusInternalServerError)
-        return
-    }
+	var user User
+	err = db.QueryRow(
+		"INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING username, created_at",
+		req.Username, string(hashedPassword),
+	).Scan(&user.Username, &user.CreatedAt)
+	if err != nil {
+		log.Printf("Error creating user: %v", err)
+		http.Error(w, "Error creating user", http.StatusInternalServerError)
+		return
+	}
 
-    // Generate token for the new user
-    token, err := generateToken(user.Username)
-    if err != nil {
-        log.Printf("Error generating token: %v", err)
-        http.Error(w, "Error generating token", http.StatusInternalServerError)
-        return
-    }
+	// Generate token for the new user
+	token, err := generateToken(user.Username)
+	if err != nil {
+		log.Printf("Error generating token: %v", err)
+		http.Error(w, "Error generating token", http.StatusInternalServerError)
+		return
+	}
 
-    log.Printf("Successfully created user: %s", user.Username)
+	log.Printf("Successfully created user: %s", user.Username)
 
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(LoginResponse{
-        Token: token,
-        User:  user,
-    })
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(LoginResponse{
+		Token: token,
+		User:  user,
+	})
 }
 
 func viewCountHandler(w http.ResponseWriter, r *http.Request) {
@@ -320,13 +323,18 @@ func deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/", authMiddleware(viewCountHandler))
-	http.HandleFunc("/login", loginHandler)
-	http.HandleFunc("/signup", signupHandler)
-	http.HandleFunc("/verify", authMiddleware(verifyHandler))
-	http.HandleFunc("/admin", basicAuth(adminHandler))
-	http.HandleFunc("/admin/users", basicAuth(createUserHandler))
-	http.HandleFunc("/admin/users/delete", basicAuth(deleteUserHandler))
+	apiHandler := api.NewHandler(db, jwtKey)
+	adminHandler := admin.NewHandler(db, tmpl)
+	mw := auth.NewMiddleware(db, jwtKey)
+
+	http.HandleFunc("/", mw.AuthMiddleware(apiHandler.ViewCountHandler))
+	http.HandleFunc("/login", apiHandler.LoginHandler)
+	http.HandleFunc("/signup", apiHandler.SignupHandler)
+	http.HandleFunc("/verify", mw.AuthMiddleware(apiHandler.VerifyHandler))
+
+	http.HandleFunc("/admin", mw.BasicAuth(adminHandler.AdminHandler))
+	http.HandleFunc("/admin/users", mw.BasicAuth(adminHandler.CreateUserHandler))
+	http.HandleFunc("/admin/users/delete", mw.BasicAuth(adminHandler.DeleteUserHandler))
 
 	log.Println("Server is running on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
