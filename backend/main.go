@@ -1,24 +1,33 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
 
 var db *sql.DB
 var tmpl *template.Template
+var jwtKey = []byte("your-secret-key")
 
 type User struct {
 	Username  string    `json:"username"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type Claims struct {
+	Username string `json:"username"`
+	jwt.RegisteredClaims
 }
 
 type LoginRequest struct {
@@ -27,7 +36,8 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	User User `json:"user"`
+	Token string `json:"token"`
+	User  User   `json:"user"`
 }
 
 func init() {
@@ -41,12 +51,45 @@ func init() {
 	tmpl = template.Must(template.ParseFiles("templates/admin.html"))
 }
 
-func loginHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
+func generateToken(username string) (string, error) {
+	expirationTime := time.Now().Add(24 * time.Hour)
+	claims := &Claims{
+		Username: username,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+		},
 	}
 
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(jwtKey)
+}
+
+func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			http.Error(w, "Authorization header required", http.StatusUnauthorized)
+			return
+		}
+
+		tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
+		claims := &Claims{}
+
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
+			return jwtKey, nil
+		})
+
+		if err != nil || !token.Valid {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), "username", claims.Username)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	}
+}
+
+func loginHandler(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -60,22 +103,28 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		req.Username,
 	).Scan(&storedHash, &user.Username, &user.CreatedAt)
 
-	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
-			return
-		}
-		http.Error(w, "Database error", http.StatusInternalServerError)
-		return
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(req.Password)); err != nil {
+	if err != nil || bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(req.Password)) != nil {
 		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
 
+	token, err := generateToken(user.Username)
+	if err != nil {
+		http.Error(w, "Error generating token", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(LoginResponse{User: user})
+	json.NewEncoder(w).Encode(LoginResponse{
+		Token: token,
+		User:  user,
+	})
+}
+
+func verifyHandler(w http.ResponseWriter, r *http.Request) {
+	// This will be wrapped by authMiddleware which verifies the token so
+	//this just returns 200 OK to indicate token is valid
+	w.WriteHeader(http.StatusOK)
 }
 
 func viewCountHandler(w http.ResponseWriter, r *http.Request) {
@@ -201,8 +250,9 @@ func deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/", viewCountHandler)
+	http.HandleFunc("/", authMiddleware(viewCountHandler))
 	http.HandleFunc("/login", loginHandler)
+	http.HandleFunc("/verify", authMiddleware(verifyHandler))
 	http.HandleFunc("/admin", basicAuth(adminHandler))
 	http.HandleFunc("/admin/users", basicAuth(createUserHandler))
 	http.HandleFunc("/admin/users/delete", basicAuth(deleteUserHandler))

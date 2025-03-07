@@ -3,19 +3,25 @@ import { useAuth } from "./contexts/AuthContext"
 import { Login } from "./components/Login"
 
 function App() {
-  const { isAuthenticated, user, logout } = useAuth()
+  const { isAuthenticated, user, logout, authFetch } = useAuth()
   const [count, setCount] = useState<number>(0)
 
   useEffect(() => {
     if (isAuthenticated) {
-      fetch("/api")
+      authFetch("/api")
         .then((res) => {
           if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`)
           return res.json()
         })
         .then((data) => setCount(data.count))
-        .catch((err) => console.error("Failed to fetch count:", err))
-    }
+        .then(data => setCount(data.count))
+                .catch(err => {
+                  console.error("Failed to fetch count:", err)
+                  if (err.message === 'Session expired') {
+                    logout()
+                  }
+                })
+            }
   }, [isAuthenticated])
 
   if (!isAuthenticated) {

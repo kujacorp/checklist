@@ -1,8 +1,13 @@
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 
 interface User {
   username: string
   created_at: string
+}
+
+interface AuthState {
+  user: User | null
+  token: string | null
 }
 
 interface AuthContextType {
@@ -15,35 +20,77 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [state, setState] = useState<AuthState>(() => {
+    const token = localStorage.getItem('token')
+    const storedUser = localStorage.getItem('user')
+    return {
+      token,
+      user: storedUser ? JSON.parse(storedUser) : null
+    }
+  })
+
+  useEffect(() => {
+    if (state.token) {
+      fetch('/api/verify', {
+        headers: {
+          'Authorization': `Bearer ${state.token}`
+        }
+      }).catch(() => {
+        // If token is invalid, logout
+        logout()
+      })
+    }
+  }, [])
 
   const login = async (username: string, password: string) => {
     const response = await fetch('/api/login', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ username, password }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
     })
 
     if (!response.ok) {
       throw new Error('Login failed')
     }
 
-    const data = await response.json()
-    setUser(data.user)
+    const { token, user } = await response.json()
+    localStorage.setItem('token', token)
+    localStorage.setItem('user', JSON.stringify(user))
+    setState({ user, token })
   }
 
   const logout = () => {
-    setUser(null)
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    setState({ user: null, token: null })
+  }
+
+  const authFetch = async (url: string, options: RequestInit = {}) => {
+    if (!state.token) throw new Error('No token available')
+
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        'Authorization': `Bearer ${state.token}`
+      }
+    })
+
+    if (response.status === 401) {
+      logout()
+      throw new Error('Session expired')
+    }
+
+    return response
   }
 
   return (
     <AuthContext.Provider value={{
-      user,
+      user: state.user,
+      isAuthenticated: !!state.token,
       login,
       logout,
-      isAuthenticated: !!user
+      authFetch
     }}>
       {children}
     </AuthContext.Provider>
