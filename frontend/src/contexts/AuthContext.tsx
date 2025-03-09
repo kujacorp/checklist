@@ -13,8 +13,10 @@ interface AuthState {
 interface AuthContextType {
   user: User | null
   login: (username: string, password: string) => Promise<void>
+  signup: (username: string, password: string) => Promise<void>
   logout: () => void
   isAuthenticated: boolean
+  authFetch: (url: string, options?: RequestInit) => Promise<Response>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -59,6 +61,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user, token })
   }
 
+  const signup = async (username: string, password: string) => {
+    const response = await fetch('/api/signup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, password }),
+    })
+
+    if (!response.ok) {
+      throw new Error('Signup failed')
+    }
+
+    const { token, user } = await response.json()
+    localStorage.setItem('token', token)
+    localStorage.setItem('user', JSON.stringify(user))
+    setState({ user, token })
+  }
+
   const logout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
@@ -89,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: state.user,
       isAuthenticated: !!state.token,
       login,
+      signup,
       logout,
       authFetch
     }}>
