@@ -31,3 +31,6 @@ Access the admin page at [localhost:8080/admin](http://localhost:8080/admin).
 
 # Hosting
 See the hosting instructions at [docs/HOSTING.md](./docs/HOSTING.md) for instructions on how you may host the app.
+
+# Interacting with the Backend
+We provide tools to interact iwth the backend, see [docs/TOOLS.md](./docs/TOOLS.md) for instruction on how to use them.

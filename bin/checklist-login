@@ -1,0 +1,47 @@
+#!/bin/bash
+set -e
+
+# Clear screen for security
+clear
+
+# Prompt for credentials
+echo "Checklist Login"
+echo "--------------"
+read -p "Username: " USERNAME
+
+# Read password without echoing
+echo -n "Password: "
+read -s PASSWORD
+echo  # Add a newline after password input
+
+# Create JSON payload for login
+JSON_PAYLOAD=$(cat <<EOF
+{
+  "username": "$USERNAME",
+  "password": "$PASSWORD"
+}
+EOF
+)
+
+# Make the login request
+RESPONSE=$(curl -s -X POST \
+  -H "Content-Type: application/json" \
+  -d "$JSON_PAYLOAD" \
+  http://localhost:8080/login)
+
+# Check if login was successful
+if [[ $RESPONSE == *"token"* ]]; then
+  # Extract the JWT token
+  TOKEN=$(echo $RESPONSE | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+
+  # Export it to environment
+  export CHECKLIST_JWT=$TOKEN
+
+  # Echo it for capturing in scripts
+  echo "export CHECKLIST_JWT=$TOKEN"
+
+  echo "Login successful!"
+else
+  echo "Login failed: $RESPONSE" >&2
+  exit 1
+fi
