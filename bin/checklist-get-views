@@ -1,0 +1,31 @@
+#!/bin/bash
+set -e
+
+# Check if the JWT is set
+if [ -z "$CHECKLIST_JWT" ]; then
+  echo "Error: CHECKLIST_JWT environment variable is not set." >&2
+  echo "Please run 'source bin/checklist-login' first to authenticate." >&2
+  exit 1
+fi
+
+# Make the request to get view count
+RESPONSE=$(curl -s -X GET \
+  -H "Authorization: Bearer $CHECKLIST_JWT" \
+  http://localhost:8080/)
+
+# Check if request was successful
+if [[ $RESPONSE == *"count"* ]]; then
+  # Extract and display the count
+  COUNT=$(echo $RESPONSE | grep -o '"count":[0-9]*' | cut -d':' -f2)
+  echo "Current view count: $COUNT"
+else
+  # Display error
+  echo "Failed to get view count: $RESPONSE" >&2
+
+  # Check if the token might be expired
+  if [[ $RESPONSE == *"Invalid token"* || $RESPONSE == *"Unauthorized"* ]]; then
+    echo "Your session may have expired. Please login again using 'source bin/checklist-login'" >&2
+  fi
+
+  exit 1
+fi
