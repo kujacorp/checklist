@@ -12,6 +12,7 @@ export function SignUp() {
     try {
       await signup(username, password)
     } catch (err) {
+      console.log(err)
       setError('Registration failed')
     }
   }
