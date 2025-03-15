@@ -12,6 +12,7 @@ export function Login() {
     try {
       await login(username, password)
     } catch (err) {
+      console.log(err)
       setError('Login failed')
     }
   }

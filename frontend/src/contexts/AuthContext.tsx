@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout()
       })
     }
-  }, [])
+  }, [state.token])
 
   const login = async (username: string, password: string) => {
     const response = await fetch('/api/login', {
