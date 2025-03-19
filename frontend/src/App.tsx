@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "./contexts/AuthContext"
 import { Login } from "./components/Login"
+import { SignUp } from "./components/SignUp"
 
 function App() {
   const { isAuthenticated, user, logout, authFetch } = useAuth()
   const [count, setCount] = useState<number>(0)
+  const [showSignUp, setShowSignUp] = useState(false)
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -24,7 +26,27 @@ function App() {
   }, [isAuthenticated, authFetch, logout])
 
   if (!isAuthenticated) {
-    return <Login />
+    return (
+      <div>
+        {showSignUp ? (
+          <>
+            <SignUp />
+            <p>
+              Already have an account?{" "}
+              <button onClick={() => setShowSignUp(false)}>Log in</button>
+            </p>
+          </>
+        ) : (
+          <>
+            <Login />
+            <p>
+              Don't have an account?{" "}
+              <button onClick={() => setShowSignUp(true)}>Sign up</button>
+            </p>
+          </>
+        )}
+      </div>
+    )
   }
 
   return (
