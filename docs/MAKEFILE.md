@@ -1,0 +1,11 @@
+We provide a Makefile with the following targets:
+- `make`: Builds the backend and frontend into `backend/server` and `frontend/dist` respectively
+- `make build`: Same as above
+- `make build-frontend`: Builds the frontend, used by the default target
+- `make build-backend`: Builds the backend, used by the default target
+- `make clean`: Deletes the build output of the above
+- `make lint` Lints the frontend code
+- `make lint-frontend`: Runs the default linter from the Vite boilerplate with `npm run lint`
+- `make format`: Formats the code
+- `make format-backend`: Formats the backend code with `go fmt`
+- `make format-frontend`: Formats the frontend code with `prettier`
