@@ -1,6 +1,9 @@
 # Development
 Run `docker compose up` to host the app locally at [localhost:3000](http://localhost:3000).
 
+We also provide a Makefile for building outside of Docker and with additional commands for testing and linting.
+See more details for this in [docs/MAKEFILE.md](./docs/MAKEFILE.md).
+
 ## Admin Setup
 
 After the web application is initialized, create a user to access the admin tools.
