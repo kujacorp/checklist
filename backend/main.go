@@ -2,10 +2,10 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/kujacorp/checklist/admin"
 	"github.com/kujacorp/checklist/api"
@@ -19,7 +19,10 @@ var jwtKey = []byte("your-secret-key")
 
 func init() {
 	var err error
-	dsn := fmt.Sprintf("host=postgres user=postgres password=postgres dbname=postgres sslmode=disable")
+	dsn := os.Getenv("POSTGRES_DSN")
+	if dsn == "" {
+		dsn = "host=postgres user=postgres password=postgres dbname=postgres sslmode=disable"
+	}
 	db, err = sql.Open("postgres", dsn)
 	if err != nil {
 		log.Fatal("Error connecting to database:", err)
