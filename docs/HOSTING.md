@@ -38,8 +38,12 @@ server {
 }
 ```
 
-4. Thens run the backend built in step 1:
-```
+4. Set up environment variables and run the backend:
+```bash
+# Set the PostgreSQL connection string
+export POSTGRES_DSN="host=localhost user=postgres password=postgres dbname=postgres sslmode=disable"
+
+# Run the server
 /path/to/backend/server
 ```
 
