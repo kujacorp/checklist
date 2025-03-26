@@ -5,15 +5,20 @@ export function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
   const { login } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsLoading(true)
+    setError('')
     try {
       await login(username, password)
     } catch (err) {
       console.log(err)
       setError('Login failed')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -27,6 +32,7 @@ export function Login() {
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            disabled={isLoading}
           />
         </label>
       </div>
@@ -38,10 +44,13 @@ export function Login() {
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            disabled={isLoading}
           />
         </label>
       </div>
-      <button type="submit">Login</button>
+      <button type="submit" disabled={isLoading}>
+        {isLoading ? 'Logging in...' : 'Login'}
+      </button>
     </form>
   )
 }
