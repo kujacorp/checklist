@@ -1,5 +1,12 @@
 You can host the app by building the backend and the frontend and tying them together with Nginx.
 
+# Pre-Requisites
+You will need:
+- A server with Go and Node.js installed
+- A PostgreSQL instance and its connection info (host, user, password, dbname)
+
+# Instructions
+
 1. Build the backend
 ```bash
 # From the root directory
@@ -14,7 +21,7 @@ cd frontend
 npm run build
 ```
 
-3. Create an Nginx configuration file (`/etc/nginx/sites-available/checklist.conf`):
+3. Create an Nginx configuration file (`/etc/nginx/conf.d/checklist.conf`):
 ```conf
 server {
     listen 80;
@@ -40,17 +47,15 @@ server {
 
 4. Set up environment variables and run the backend:
 ```bash
-# Set the PostgreSQL connection string
+# Set the PostgreSQL connection string, replace values with the details of your Postgres setup
 export POSTGRES_DSN="host=localhost user=postgres password=postgres dbname=postgres sslmode=disable"
 
 # Run the server
 /path/to/backend/server
 ```
 
-5. In another separate terminal, enable Nginx:
+5. In another separate terminal, restart Nginx to load the config in step 3:
 ```sh
-sudo ln -s /etc/nginx/sites-available/checklist.conf /etc/nginx/sites-enabled/
-
 # Test Nginx configuration
 sudo nginx -t
 
