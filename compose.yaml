@@ -7,6 +7,11 @@ services:
       - postgres
     environment:
       DATABASE_URL: "postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable"
+    develop:
+      watch:
+        - action: rebuild
+          path: ./backend
+          target: /app
 
   frontend:
     build: ./frontend
