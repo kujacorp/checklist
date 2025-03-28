@@ -43,6 +43,9 @@ server {
 # Set the PostgreSQL connection string
 export POSTGRES_DSN="host=localhost user=postgres password=postgres dbname=postgres sslmode=disable"
 
+# Generate a random JWT secret key
+export JWT_SECRET_KEY=$(openssl rand -base64 32)
+
 # Run the server
 /path/to/backend/server
 ```
