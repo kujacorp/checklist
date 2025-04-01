@@ -7,6 +7,12 @@ services:
       - postgres
     environment:
       JWT_SECRET_KEY: "your-secret-key"
+    develop:
+      watch:
+        - action: rebuild
+          path: ./backend
+          target: /app
+
   frontend:
     build: ./frontend
     ports:
