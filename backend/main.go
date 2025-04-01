@@ -15,7 +15,7 @@ import (
 
 var db *sql.DB
 var tmpl *template.Template
-var jwtKey = []byte("your-secret-key")
+var jwtKey []byte
 
 func init() {
 	var err error
@@ -27,6 +27,12 @@ func init() {
 	if err != nil {
 		log.Fatal("Error connecting to database:", err)
 	}
+
+	jwtKeyEnv := os.Getenv("JWT_SECRET_KEY")
+	if jwtKeyEnv == "" {
+		log.Fatal("Environment variable JWT_SECRET_KEY is required")
+	}
+	jwtKey = []byte(jwtKeyEnv)
 
 	tmpl = template.Must(template.ParseFiles("templates/admin.html"))
 }

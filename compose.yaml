@@ -5,7 +5,8 @@ services:
       - "8080:8080"
     depends_on:
       - postgres
-
+    environment:
+      JWT_SECRET_KEY: "your-secret-key"
   frontend:
     build: ./frontend
     ports:
