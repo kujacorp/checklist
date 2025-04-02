@@ -7,26 +7,26 @@ import (
 )
 
 type User struct {
-    Username  string    `json:"username"`
-    CreatedAt time.Time `json:"created_at"`
+	Username  string    `json:"username"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Claims struct {
-    Username string `json:"username"`
-    jwt.RegisteredClaims
+	Username string `json:"username"`
+	jwt.RegisteredClaims
 }
 
 type LoginRequest struct {
-    Username string `json:"username"`
-    Password string `json:"password"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type LoginResponse struct {
-    Token string `json:"token"`
-    User  User   `json:"user"`
+	Token string `json:"token"`
+	User  User   `json:"user"`
 }
 
 type SignupRequest struct {
-    Username string `json:"username"`
-    Password string `json:"password"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
